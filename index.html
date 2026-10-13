@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>لعبة أجزاء جسم الإنسان</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#e8f4f1; --ink:#12343b; --card:#ffffff; --skin:#f4c7a1; --skin-line:#b9774a;
+    --accent:#ff9f1c; --good:#2a9d5c; --bad:#d64545; --teal:#1f7a8c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    font-family:"Tajawal","Segoe UI",Tahoma,Arial,sans-serif;
+    background:var(--bg); color:var(--ink);
+    padding:16px; display:flex; justify-content:center;
+  }
+  .app{width:100%; max-width:960px}
+  header{display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px}
+  h1{margin:0; font-size:clamp(1.4rem,4vw,2rem); font-weight:800}
+  .stats{display:flex; gap:8px}
+  .chip{background:var(--card); border:2px solid var(--teal); border-radius:999px; padding:6px 14px; font-weight:700; font-size:1rem}
+  .chip b{color:var(--teal)}
+  .board{display:grid; grid-template-columns:minmax(220px,340px) 1fr; gap:16px; align-items:start}
+  @media (max-width:700px){ .board{grid-template-columns:1fr} }
+  .figure{background:var(--card); border-radius:20px; padding:12px; box-shadow:0 4px 0 rgba(18,52,59,.12); text-align:center}
+  svg{width:100%; max-height:70vh; height:auto; display:block; margin:auto}
+  .part{fill:var(--skin); stroke:var(--skin-line); stroke-width:3; transition:fill .15s}
+  .part-group{outline:none}
+  .clickable .part-group{cursor:pointer}
+  .clickable .part-group:hover .part, .clickable .part-group:focus-visible .part{fill:#ffe0a8}
+  .part-group.hl .part{fill:var(--accent); animation:pulse 1s ease-in-out infinite}
+  .part-group.right .part{fill:#8fd9a8; animation:none}
+  .part-group.wrong .part{fill:#f19a9a; animation:none}
+  @keyframes pulse{50%{fill:#ffd27a}}
+  .face{fill:none; stroke:var(--skin-line); stroke-width:3; stroke-linecap:round; pointer-events:none}
+  .face-dot{fill:var(--ink); pointer-events:none}
+  .panel{background:var(--card); border-radius:20px; padding:20px; box-shadow:0 4px 0 rgba(18,52,59,.12); min-height:360px; display:flex; flex-direction:column; gap:14px}
+  .progress{height:10px; background:#d5e7e3; border-radius:999px; overflow:hidden}
+  .progress i{display:block; height:100%; width:0; background:var(--teal); transition:width .3s}
+  .question{font-size:clamp(1.3rem,3.5vw,1.8rem); font-weight:800; line-height:1.5; margin:4px 0}
+  .answers{display:grid; gap:10px}
+  button{
+    font-family:inherit; font-size:1.15rem; font-weight:700; color:var(--ink);
+    background:#fff; border:2px solid var(--teal); border-radius:14px;
+    padding:12px 16px; cursor:pointer; text-align:center; transition:transform .1s, background .15s;
+  }
+  button:hover:not(:disabled){background:#e3f3f6}
+  button:active:not(:disabled){transform:scale(.98)}
+  button:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+  button:disabled{cursor:default}
+  button.primary{background:var(--teal); color:#fff}
+  button.primary:hover:not(:disabled){background:#17606f}
+  button.right{background:var(--good); border-color:var(--good); color:#fff}
+  button.wrong{background:var(--bad); border-color:var(--bad); color:#fff}
+  .feedback{min-height:84px; border-radius:14px; padding:12px 14px; font-size:1.1rem; line-height:1.6; display:none}
+  .feedback.show{display:block}
+  .feedback.ok{background:#dff3e7; border:2px solid var(--good)}
+  .feedback.no{background:#fbe3e3; border:2px solid var(--bad)}
+  .center{text-align:center}
+  .big{font-size:3rem; margin:0}
+  .stars{font-size:2.4rem; letter-spacing:6px}
+  .shake{animation:shake .35s}
+  @keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+  .hint{opacity:.75; font-size:1rem}
+  @media (prefers-reduced-motion:reduce){ .part-group.hl .part,.shake{animation:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>🧍 لعبة أجزاء جسم الإنسان</h1>
+    <div class="stats">
+      <div class="chip">النقاط: <b id="score">0</b></div>
+      <div class="chip">السؤال: <b id="qnum">0</b>/10</div>
+    </div>
+  </header>
+
+  <main class="board">
+    <section class="figure" aria-label="جسم الإنسان">
+      <svg id="body" viewBox="0 0 240 500" role="img" aria-label="رسم لجسم الإنسان">
+        <!-- الأطراف السفلى -->
+        <g class="part-group" data-part="legs" tabindex="0" role="button" aria-label="الأطراف السفلى">
+          <rect class="part" x="82" y="262" width="36" height="180" rx="18"/>
+          <rect class="part" x="122" y="262" width="36" height="180" rx="18"/>
+          <ellipse class="part" cx="96" cy="458" rx="24" ry="13"/>
+          <ellipse class="part" cx="144" cy="458" rx="24" ry="13"/>
+        </g>
+        <!-- الأطراف العليا -->
+        <g class="part-group" data-part="arms" tabindex="0" role="button" aria-label="الأطراف العليا">
+          <rect class="part" x="40" y="116" width="30" height="132" rx="15"/>
+          <circle class="part" cx="55" cy="262" r="17"/>
+          <rect class="part" x="170" y="116" width="30" height="132" rx="15"/>
+          <circle class="part" cx="185" cy="262" r="17"/>
+        </g>
+        <!-- الجذع -->
+        <g class="part-group" data-part="trunk" tabindex="0" role="button" aria-label="الجذع">
+          <rect class="part" x="74" y="108" width="92" height="166" rx="26"/>
+        </g>
+        <!-- الرقبة -->
+        <g class="part-group" data-part="neck" tabindex="0" role="button" aria-label="الرقبة">
+          <rect class="part" x="104" y="82" width="32" height="34" rx="8"/>
+        </g>
+        <!-- الرأس -->
+        <g class="part-group" data-part="head" tabindex="0" role="button" aria-label="الرأس">
+          <circle class="part" cx="120" cy="48" r="38"/>
+          <circle class="face-dot" cx="106" cy="42" r="4"/>
+          <circle class="face-dot" cx="134" cy="42" r="4"/>
+          <path class="face" d="M104 62 Q120 76 136 62"/>
+        </g>
+      </svg>
+    </section>
+
+    <section class="panel" id="panel" aria-live="polite"></section>
+  </main>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const PARTS = {
+    head:  { name:"الرأس",                        fact:"في الرأس الدماغ والعينان والأذنان والأنف والفم." },
+    neck:  { name:"الرقبة",                       fact:"الرقبة تربط الرأس بالجذع وتساعدنا على تحريك الرأس." },
+    trunk: { name:"الجذع (الجسم)",                fact:"في الجذع القلب والرئتان والمعدة، وهو أكبر جزء في الجسم." },
+    arms:  { name:"الأطراف العليا (اليدان)",      fact:"نستخدم اليدين في الكتابة والإمساك والأكل." },
+    legs:  { name:"الأطراف السفلى (القدمان)",     fact:"نستخدم القدمين في المشي والجري والقفز." }
+  };
+  const KEYS = Object.keys(PARTS);
+  const TOTAL = 10;
+
+  const panel = document.getElementById("panel");
+  const svg = document.getElementById("body");
+  const groups = {};
+  svg.querySelectorAll(".part-group").forEach(g => groups[g.dataset.part] = g);
+  const scoreEl = document.getElementById("score");
+  const qnumEl = document.getElementById("qnum");
+
+  let score, qIndex, current, locked, lastPart;
+
+  function clearBody(){
+    Object.values(groups).forEach(g => g.classList.remove("hl","right","wrong"));
+    svg.parentElement.classList.remove("clickable");
+  }
+  function shuffle(a){
+    a = a.slice();
+    for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+  }
+
+  function showStart(){
+    clearBody();
+    scoreEl.textContent = 0; qnumEl.textContent = 0;
+    panel.innerHTML = `
+      <div class="center">
+        <p class="big">🧠</p>
+        <h2 class="question">هيا نتعرّف على أجزاء الجسم الرئيسية!</h2>
+        <p class="hint">سنسألك ${TOTAL} أسئلة: مرة تختار اسم الجزء الملوّن، ومرة تضغط على الجزء الصحيح في الصورة.</p>
+      </div>
+      <button class="primary" id="startBtn">ابدأ اللعب</button>
+      <button id="learnBtn">تعلّم الأجزاء أولاً</button>
+    `;
+    document.getElementById("startBtn").onclick = startGame;
+    document.getElementById("learnBtn").onclick = showLearn;
+  }
+
+  function showLearn(){
+    clearBody();
+    svg.parentElement.classList.add("clickable");
+    panel.innerHTML = `
+      <h2 class="question">اضغط على أي جزء في الصورة لتتعرّف عليه</h2>
+      <div class="feedback show ok" id="learnInfo">اختر جزءًا من الجسم.</div>
+      <button class="primary" id="startBtn">ابدأ اللعب</button>
+    `;
+    document.getElementById("startBtn").onclick = startGame;
+    const info = document.getElementById("learnInfo");
+    Object.entries(groups).forEach(([key,g]) => {
+      g.onclick = () => {
+        Object.values(groups).forEach(x => x.classList.remove("hl"));
+        g.classList.add("hl");
+        info.innerHTML = `<b>${PARTS[key].name}</b><br>${PARTS[key].fact}`;
+      };
+      g.onkeydown = e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); g.onclick(); } };
+    });
+  }
+
+  function startGame(){
+    score = 0; qIndex = 0; lastPart = null;
+    scoreEl.textContent = 0;
+    nextQuestion();
+  }
+
+  function nextQuestion(){
+    if(qIndex >= TOTAL){ return showResult(); }
+    clearBody();
+    locked = false;
+    qIndex++;
+    qnumEl.textContent = qIndex;
+
+    let key;
+    do { key = KEYS[Math.floor(Math.random()*KEYS.length)]; } while(key === lastPart);
+    lastPart = key;
+    const mode = Math.random() < 0.5 ? "name" : "click";
+    current = { key, mode };
+
+    const bar = `<div class="progress"><i style="width:${((qIndex-1)/TOTAL)*100}%"></i></div>`;
+
+    if(mode === "name"){
+      groups[key].classList.add("hl");
+      panel.innerHTML = `
+        ${bar}
+        <h2 class="question">ما اسم الجزء الملوّن بالبرتقالي؟</h2>
+        <div class="answers" id="answers"></div>
+        <div class="feedback" id="fb"></div>
+        <button class="primary" id="nextBtn" style="display:none">التالي</button>`;
+      const box = document.getElementById("answers");
+      shuffle(KEYS).forEach(k => {
+        const b = document.createElement("button");
+        b.textContent = PARTS[k].name;
+        b.dataset.k = k;
+        b.onclick = () => answerName(k, b);
+        box.appendChild(b);
+      });
+    } else {
+      svg.parentElement.classList.add("clickable");
+      panel.innerHTML = `
+        ${bar}
+        <h2 class="question">اضغط على: <span style="color:var(--teal)">${PARTS[key].name}</span></h2>
+        <p class="hint">اضغط على الجزء الصحيح في الصورة.</p>
+        <div class="feedback" id="fb"></div>
+        <button class="primary" id="nextBtn" style="display:none">التالي</button>`;
+      Object.entries(groups).forEach(([k,g]) => {
+        g.onclick = () => answerClick(k);
+        g.onkeydown = e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); answerClick(k); } };
+      });
+    }
+    document.getElementById("nextBtn").onclick = nextQuestion;
+  }
+
+  function finish(correct, chosenKey){
+    locked = true;
+    const fb = document.getElementById("fb");
+    const f = PARTS[current.key];
+    if(correct){
+      score++; scoreEl.textContent = score;
+      fb.className = "feedback show ok";
+      fb.innerHTML = `✅ أحسنت! هذا <b>${f.name}</b>.<br>${f.fact}`;
+    } else {
+      fb.className = "feedback show no";
+      fb.innerHTML = `❌ ليست الإجابة الصحيحة. الجزء الصحيح هو <b>${f.name}</b>.<br>${f.fact}`;
+      svg.classList.add("shake");
+      setTimeout(()=>svg.classList.remove("shake"),400);
+    }
+    const nb = document.getElementById("nextBtn");
+    nb.style.display = "";
+    nb.textContent = qIndex >= TOTAL ? "شاهد النتيجة" : "التالي";
+    nb.focus();
+  }
+
+  function answerName(k, btn){
+    if(locked) return;
+    const ok = k === current.key;
+    document.querySelectorAll("#answers button").forEach(b => {
+      b.disabled = true;
+      if(b.dataset.k === current.key) b.classList.add("right");
+    });
+    if(!ok) btn.classList.add("wrong");
+    finish(ok, k);
+  }
+
+  function answerClick(k){
+    if(locked) return;
+    const ok = k === current.key;
+    Object.values(groups).forEach(g => g.classList.remove("hl"));
+    groups[current.key].classList.add("right");
+    if(!ok) groups[k].classList.add("wrong");
+    svg.parentElement.classList.remove("clickable");
+    finish(ok, k);
+  }
+
+  function showResult(){
+    clearBody();
+    const pct = score / TOTAL;
+    const stars = pct >= 0.9 ? 3 : pct >= 0.6 ? 2 : pct > 0 ? 1 : 0;
+    const msg = pct >= 0.9 ? "ممتاز! أنت خبير في أجزاء الجسم 🏆"
+              : pct >= 0.6 ? "جيد جدًا! حاول مرة أخرى للوصول إلى النتيجة الكاملة."
+              : "لا بأس، جرّب مرة أخرى بعد مراجعة الأجزاء.";
+    panel.innerHTML = `
+      <div class="center">
+        <div class="progress"><i style="width:100%"></i></div>
+        <h2 class="question">نتيجتك: ${score} من ${TOTAL}</h2>
+        <div class="stars" aria-label="${stars} نجوم">${"⭐".repeat(stars)}${"☆".repeat(3-stars)}</div>
+        <p class="question" style="font-size:1.2rem">${msg}</p>
+      </div>
+      <button class="primary" id="againBtn">العب مرة أخرى</button>
+      <button id="learnBtn">راجع الأجزاء</button>`;
+    document.getElementById("againBtn").onclick = startGame;
+    document.getElementById("learnBtn").onclick = showLearn;
+  }
+
+  showStart();
+})();
+</script>
+</body>
+</html>
